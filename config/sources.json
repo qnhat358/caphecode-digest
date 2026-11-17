@@ -1,0 +1,20 @@
+{
+  "hours": 26,
+  "max_per_source": 20,
+  "sources": [
+    {"type": "hn", "name": "Hacker News", "min_points": 80},
+    {"type": "lobsters", "name": "Lobsters"},
+    {"type": "reddit", "name": "Reddit", "subreddits": ["LocalLLaMA", "MachineLearning", "ClaudeAI", "programming"]},
+    {"type": "github_trending", "name": "GitHub Trending"},
+    {"type": "hf_papers", "name": "HF Daily Papers"},
+    {"type": "rss", "name": "OpenAI", "url": "https://openai.com/news/rss.xml"},
+    {"type": "rss", "name": "Google DeepMind", "url": "https://deepmind.google/blog/rss.xml"},
+    {"type": "rss", "name": "Google AI", "url": "https://blog.google/technology/ai/rss/"},
+    {"type": "rss", "name": "Hugging Face", "url": "https://huggingface.co/blog/feed.xml"},
+    {"type": "rss", "name": "Simon Willison", "url": "https://simonwillison.net/atom/everything/"},
+    {"type": "rss", "name": "Latent Space", "url": "https://www.latent.space/feed"},
+    {"type": "rss", "name": "The Verge AI", "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"},
+    {"type": "rss", "name": "TechCrunch AI", "url": "https://techcrunch.com/category/artificial-intelligence/feed/"},
+    {"type": "rss", "name": "The Pragmatic Engineer", "url": "https://blog.pragmaticengineer.com/rss/"}
+  ]
+}
