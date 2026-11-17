@@ -3,6 +3,7 @@
 
 Chỉ dùng thư viện chuẩn. Nguồn nào lỗi thì ghi vào "errors" và bỏ qua, không làm hỏng cả lượt chạy.
 """
+import gzip
 import html
 import json
 import re
@@ -22,18 +23,21 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/130.0 Safari/537.36 daily-tech-digest/1.0")
 
 
-def get(url, timeout=20):
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+def get(url, timeout=20, headers=None):
+    headers = {"User-Agent": UA, "Accept": "*/*", **(headers or {})}
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read()
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout) as r:
+            body = r.read()
     except Exception:
         # Vài trang (Reddit) treo bắt tay TLS với Python nhưng cho curl qua; curl cũng là lần thử lại khi lỗi thoáng qua.
-        return subprocess.run(["curl", "-sfL", "--compressed", "-m", str(timeout), "-A", UA, url],
+        extra = [arg for k, v in headers.items() if k != "User-Agent" for arg in ("-H", f"{k}: {v}")]
+        body = subprocess.run(["curl", "-sfL", "--compressed", "-m", str(timeout), "-A", UA, *extra, url],
                               capture_output=True, check=True).stdout
+    # DeepMind thỉnh thoảng trả gzip dù không được yêu cầu nén
+    return gzip.decompress(body) if body[:2] == b"\x1f\x8b" else body
 
 
-def clean(text, limit=300):
+def clean(text, limit=220):
     text = re.sub(r"<[^>]+>", " ", html.unescape(text or ""))
     text = re.sub(r"\s+", " ", text).strip()
     return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + "…"
@@ -92,9 +96,15 @@ def reddit(src, since):
 
 
 def github_trending(src, since):
-    page = get("https://github.com/trending?since=daily").decode("utf-8", "replace")
+    url = "https://github.com/trending?since=daily"
+    try:
+        page = get(url)
+    except Exception:
+        # Môi trường cloud đi GitHub qua proxy riêng và chặn trang HTML (403); Jina Reader tải hộ và trả nguyên HTML.
+        page = get(f"https://r.jina.ai/{url}", timeout=40, headers={"X-Return-Format": "html"})
+    page = page.decode("utf-8", "replace")
     out = []
-    for block in page.split('<article class="Box-row">')[1:]:
+    for block in page.split('<article class="Box-row"')[1:]:
         repo = re.search(r'<h2[^>]*>\s*<a[^>]*href="/([^"]+)"', block)
         if not repo:
             continue

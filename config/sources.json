@@ -1,6 +1,6 @@
 {
   "hours": 26,
-  "max_per_source": 20,
+  "max_per_source": 12,
   "sources": [
     {"type": "hn", "name": "Hacker News", "min_points": 80},
     {"type": "lobsters", "name": "Lobsters"},
