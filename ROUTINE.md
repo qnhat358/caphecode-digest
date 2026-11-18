@@ -14,8 +14,11 @@ Bạn là biên tập viên bản tin công nghệ cho một lập trình viên 
    - Bỏ tin thuộc mục "Bỏ qua", tin PR rỗng, tin chỉ là tin đồn.
    - Tin tìm được qua WebSearch chỉ đưa vào khi nguồn là trang chính thức của công ty hoặc báo công nghệ có tên tuổi (The Verge, TechCrunch, Ars Technica, Reuters...). Không đưa tin "cần xác nhận lại".
    - Với tin quan trọng mà `snippet` quá sơ sài, được WebFetch link gốc để đọc (**tối đa 5 link**). Không đọc được thì chỉ viết những gì chắc chắn.
+   - Nếu "GitHub Trending" nằm trong `errors`, dùng WebFetch đọc https://github.com/trending để lấy 3–4 repo (tính vào giới hạn 5 link). Tin GitHub có `note` thì đó là repo mới trong tuần chứ không phải trending: ghi "+N⭐ tuần này" thay vì "hôm nay".
 6. Viết bản tin vào `out/digest.html` theo khuôn bên dưới.
-7. Chạy `python3 scripts/send_telegram.py out/digest.html`. Nếu báo lỗi, đọc lỗi, sửa `out/digest.html` rồi gửi lại, tối đa 2 lần.
+7. **Tự soát trước khi gửi:** đọc lại `out/digest.html` từng câu. Mỗi chi tiết (con số, tên, nhận định, "theo X") phải có trong `snippet` hoặc trong bài bạn đã WebFetch. Câu nào không có nguồn thì xóa hoặc viết lại cho đúng với nguồn. Không gán lời cho một tổ chức hay một người khi nguồn không nói vậy.
+8. Chạy `python3 scripts/send_telegram.py out/digest.html`. Nếu báo lỗi, đọc lỗi, sửa `out/digest.html` rồi gửi lại, tối đa 2 lần.
+9. Kết thúc bằng một đoạn tóm tắt ngắn. Nguồn nào lỗi thì chép nguyên văn thông báo lỗi trong `errors` (để người bảo trì biết bị chặn ở đâu).
 
 ## Khuôn bản tin
 

@@ -28,11 +28,14 @@ def get(url, timeout=20, headers=None):
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout) as r:
             body = r.read()
-    except Exception:
+    except Exception as e:
         # Vài trang (Reddit) treo bắt tay TLS với Python nhưng cho curl qua; curl cũng là lần thử lại khi lỗi thoáng qua.
         extra = [arg for k, v in headers.items() if k != "User-Agent" for arg in ("-H", f"{k}: {v}")]
-        body = subprocess.run(["curl", "-sfL", "--compressed", "-m", str(timeout), "-A", UA, *extra, url],
-                              capture_output=True, check=True).stdout
+        res = subprocess.run(["curl", "-sSfL", "--compressed", "-m", str(timeout), "-A", UA, *extra, url],
+                             capture_output=True)
+        if res.returncode:
+            raise RuntimeError(f"{url} -> urllib: {e}; {res.stderr.decode(errors='replace').strip()}") from None
+        body = res.stdout
     # DeepMind thỉnh thoảng trả gzip dù không được yêu cầu nén
     return gzip.decompress(body) if body[:2] == b"\x1f\x8b" else body
 
@@ -96,13 +99,23 @@ def reddit(src, since):
 
 
 def github_trending(src, since):
+    # Cloud đi GitHub qua proxy riêng và chặn trang HTML (403); Jina Reader tải hộ và trả nguyên HTML.
+    # Cả hai cùng hỏng thì lùi về GitHub API: repo mới tạo trong tuần, nhiều sao nhất.
     url = "https://github.com/trending?since=daily"
+    errors = []
+    for fetch_url, kw in ((url, {}), (f"https://r.jina.ai/{url}", {"timeout": 40, "headers": {"X-Return-Format": "html"}})):
+        try:
+            return parse_trending(get(fetch_url, **kw).decode("utf-8", "replace"))
+        except Exception as e:
+            errors.append(str(e))
     try:
-        page = get(url)
-    except Exception:
-        # Môi trường cloud đi GitHub qua proxy riêng và chặn trang HTML (403); Jina Reader tải hộ và trả nguyên HTML.
-        page = get(f"https://r.jina.ai/{url}", timeout=40, headers={"X-Return-Format": "html"})
-    page = page.decode("utf-8", "replace")
+        return github_new_repos()
+    except Exception as e:
+        errors.append(str(e))
+    raise RuntimeError(" | ".join(errors))
+
+
+def parse_trending(page):
     out = []
     for block in page.split('<article class="Box-row"')[1:]:
         repo = re.search(r'<h2[^>]*>\s*<a[^>]*href="/([^"]+)"', block)
@@ -114,7 +127,18 @@ def github_trending(src, since):
         out.append(item(repo.group(1), f"https://github.com/{repo.group(1)}",
                         score=int(today.group(1).replace(",", "")) if today else None,
                         snippet=desc.group(1) if desc else "", language=lang.group(1) if lang else None))
+    if not out:
+        raise RuntimeError("trang trending không có repo nào (bị chặn hoặc đổi giao diện)")
     return out
+
+
+def github_new_repos():
+    week = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    data = json.loads(get(f"https://api.github.com/search/repositories?q=created:%3E{week}&sort=stars&order=desc&per_page=15",
+                          headers={"Accept": "application/vnd.github+json"}))
+    return [item(r["full_name"], r["html_url"], score=r["stargazers_count"], snippet=r.get("description") or "",
+                 language=r.get("language"), note="không phải trending: repo tạo trong 7 ngày, score là tổng sao")
+            for r in data["items"]]
 
 
 def hf_papers(src, since):
